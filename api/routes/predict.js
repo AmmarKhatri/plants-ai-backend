@@ -1,10 +1,13 @@
 const express = require("express");
 const router = express.Router();
-
+const multer = require('multer');
 const tf = require("@tensorflow/tfjs");
 const fs = require("fs");
 const tfHub = require("@tensorflow/tfjs-converter");
 const tfn = require("@tensorflow/tfjs-node");
+const sharp = require('sharp');
+const { error } = require("console");
+const upload = multer({ dest: 'uploads/' });
 
 const class_idx_map = {
   Apple___Apple_scab: 0,
@@ -64,10 +67,8 @@ async function loadGraphModel() {
   return model;
 }
 
-async function predict_image(img_path) {
+async function predict_image(img) {
   // const img = fs.readFileSync("test_pics/images-3.jpeg");
-  const img = fs.readFileSync(img_path);
-
   const tensor = tfn.node.decodeImage(img);
 
   const resized = tf.image.resizeBilinear(tensor, [224, 224]);
@@ -93,11 +94,11 @@ async function predict_image(img_path) {
 
 loadGraphModel();
 
-predict_image("test_pics/apple-cedar-rust.jpeg").then(
-  result => {
-    console.log(result)
-  }
-)
+// predict_image("test_pics/apple-cedar-rust.jpeg").then(
+//   result => {
+//     console.log(result)
+//   }
+// )
 
 router.get("/", (req, res, next) => {
   // testing if taking requests
@@ -105,11 +106,26 @@ router.get("/", (req, res, next) => {
     res: "server is receiving requests",
   });
 });
-router.post("/", (req, res, next) => {
+router.post("/", upload.single('file'), async (req, res, next) => {
   // put logic here
-  res.status(200).json({
-    res: "(anything)",
-  });
+  const file = req.file;
+  const filePath = file.path;
+  // Read the uploaded file from disk
+  const fileBuffer = fs.readFileSync(filePath);
+
+  // Convert the file to JPEG format using sharp
+  const converted = await sharp(fileBuffer).jpeg().toBuffer();
+  predict_image(converted).then(result =>{
+    res.status(201).json({
+      type: result[0],
+      accuracy: result[1]
+    });
+  }).catch(err=>{
+    console.log(err);
+    res.status(500).json({
+      message: "Error processing file"
+    });
+  })
 });
 
 module.exports = router;
