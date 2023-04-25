@@ -100,6 +100,60 @@ loadGraphModel();
 //   }
 // )
 
+
+
+let leaf_model
+async function loadLeafGraphModel() {
+  const handler = tfn.io.fileSystem("tfjs_leaf_model_dir/model.json");
+
+  leaf_model = await tf.loadGraphModel(handler);
+  // outputTensor = model.outputs[0];
+  // console.log(outputTensor.classNames); // ["class 0", "class 1", "class 2", ...]
+  return leaf_model;
+}
+
+idx_map_leaf = {
+  0 : "is_leaf",
+  1 : "is_not_leaf"
+}
+
+async function predict_leaf_image(img) {
+  const img1 = fs.readFileSync("dca.jpg");
+  const tensor = tfn.node.decodeImage(img1);
+
+  const resized = tf.image.resizeBilinear(tensor, [224, 224]);
+  const casted = resized.cast("float32");
+  const expanded = casted.expandDims(0);
+  const normalized = expanded.div(255.0);
+
+  if (!leaf_model) {
+    // Check if the model has already been loaded
+    await loadLeafGraphModel(); // Load the model if it hasn't been loaded yet
+  }
+  const prediction = leaf_model.predict(normalized);
+
+  const probs = prediction.dataSync();
+  const classIndex = probs.indexOf(Math.max(...probs));
+
+  // console.log("Predicted class index:", classIndex);
+  // console.log("Class: ", idx_class_map[classIndex])
+  // console.log("Accuracy: ", probs[classIndex])
+
+  return [idx_map_leaf[classIndex], probs[classIndex]];
+}
+
+
+predict_leaf_image("leaf.png").then(
+  result => {
+    console.log(result)
+  }
+)
+
+
+
+
+
+
 router.get("/", (req, res, next) => {
   // testing if taking requests
   res.status(200).json({
