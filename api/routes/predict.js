@@ -50,6 +50,67 @@ const class_idx_map = {
   Tomato___healthy: 37,
 };
 
+v3_idxclass_map = {
+    0: 'Apple___healthy',
+    1: 'Apple_diseased',
+    2: 'Blueberry___healthy',
+    3: 'Cherry_(including_sour)___healthy',
+    4: 'Cherry_(including_sour)_diseased',
+    5: 'Corn_(maize)___healthy',
+    6: 'Corn_(maize)_diseased',
+    7: 'Grape___healthy',
+    8: 'Grape_diseased',
+    9: 'Orange_diseased',
+    10: 'Peach___healthy',
+    11: 'Peach_diseased',
+    12: 'Pepper,_bell___healthy',
+    13: 'Pepper,_bell_diseased',
+    14: 'Potato___healthy',
+    15: 'Potato_diseased',
+    16: 'Raspberry___healthy',
+    17: 'Soybean___healthy',
+    18: 'Squash_diseased',
+    19: 'Strawberry___healthy',
+    20: 'Strawberry_diseased',
+    21: 'Tomato___healthy',
+    22: 'Tomato_diseased'
+}
+let modelv3
+
+async function loadGraphModelV3() {
+  const handler = tfn.io.fileSystem("tfjs_model_v3/model.json");
+
+  modelv3 = await tf.loadGraphModel(handler);
+  // outputTensor = model.outputs[0];
+  // console.log(outputTensor.classNames); // ["class 0", "class 1", "class 2", ...]
+  return modelv3;
+}
+
+async function predict_image_v3(img_path) {
+  const img = fs.readFileSync(img_path);
+  const tensor = tfn.node.decodeImage(img);
+
+  const resized = tf.image.resizeBilinear(tensor, [224, 224]);
+  const casted = resized.cast("float32");
+  const expanded = casted.expandDims(0);
+  const normalized = expanded.div(255.0);
+
+  if (!modelv3) {
+    // Check if the model has already been loaded
+    await loadGraphModelV3(); // Load the model if it hasn't been loaded yet
+  }
+  const prediction = modelv3.predict(normalized);
+
+  const probs = prediction.dataSync();
+  const classIndex = probs.indexOf(Math.max(...probs));
+
+  // console.log("Predicted class index:", classIndex);
+  // console.log("Class: ", idx_class_map[classIndex])
+  // console.log("Accuracy: ", probs[classIndex])
+
+  return [v3_idxclass_map[classIndex], probs[classIndex]];
+}
+
 const idx_class_map = {};
 for (let key in class_idx_map) {
   let value = class_idx_map[key];
@@ -143,7 +204,7 @@ async function predict_leaf_image(img) {
 }
 
 
-predict_leaf_image("leaf.png").then(
+predict_image_v3("leaff.jpg").then(
   result => {
     console.log(result)
   }
