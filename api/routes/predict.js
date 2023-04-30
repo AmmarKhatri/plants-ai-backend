@@ -49,6 +49,29 @@ const class_idx_map = {
   Tomato___Tomato_mosaic_virus: 36,
   Tomato___healthy: 37,
 };
+v4_idxclass_map = {
+  0: 'Apple_scab',
+  1: 'Bacterial_spot',
+  2: 'Black_rot',
+  3: 'Cedar_apple_rust',
+  4: 'Cercospora_leaf_spot Gray_leaf_spot',
+  5: 'Common_rust_',
+  6: 'Early_blight',
+  7: 'Esca_(Black_Measles)',
+  8: 'Haunglongbing_(Citrus_greening)',
+  9: 'Late_blight',
+  10: 'Leaf_Mold',
+  11: 'Leaf_blight_(Isariopsis_Leaf_Spot)',
+  12: 'Leaf_scorch',
+  13: 'Northern_Leaf_Blight',
+  14: 'Powdery_mildew',
+  15: 'Septoria_leaf_spot',
+  16: 'Spider_mites Two-spotted_spider_mite',
+  17: 'Target_Spot',
+  18: 'Tomato_Yellow_Leaf_Curl_Virus',
+  19: 'Tomato_mosaic_virus',
+  20: 'healthy'
+}
 
 v3_idxclass_map = {
     0: 'Apple___healthy',
@@ -75,6 +98,42 @@ v3_idxclass_map = {
     21: 'Tomato___healthy',
     22: 'Tomato_diseased'
 }
+let modelv4
+
+async function loadGraphModelV4() {
+  const handler = tfn.io.fileSystem("tfjs_model_v4/model.json");
+
+  modelv4 = await tf.loadGraphModel(handler);
+  // outputTensor = model.outputs[0];
+  // console.log(outputTensor.classNames); // ["class 0", "class 1", "class 2", ...]
+  return modelv4;
+}
+
+async function predict_image_v4(img_path) {
+  const img = fs.readFileSync(img_path);
+  const tensor = tfn.node.decodeImage(img);
+
+  const resized = tf.image.resizeBilinear(tensor, [224, 224]);
+  const casted = resized.cast("float32");
+  const expanded = casted.expandDims(0);
+  const normalized = expanded.div(255.0);
+
+  if (!modelv4) {
+    // Check if the model has already been loaded
+    await loadGraphModelV4(); // Load the model if it hasn't been loaded yet
+  }
+  const prediction = modelv4.predict(normalized);
+
+  const probs = prediction.dataSync();
+  const classIndex = probs.indexOf(Math.max(...probs));
+
+  // console.log("Predicted class index:", classIndex);
+  // console.log("Class: ", idx_class_map[classIndex])
+  // console.log("Accuracy: ", probs[classIndex])
+
+  return [v4_idxclass_map[classIndex], probs[classIndex]];
+}
+
 let modelv3
 
 async function loadGraphModelV3() {
@@ -203,12 +262,12 @@ async function predict_leaf_image(img) {
   return [idx_map_leaf[classIndex], probs[classIndex]];
 }
 
-
-predict_image_v3("leaff.jpg").then(
-  result => {
-    console.log(result)
-  }
-)
+// for testing model
+// predict_image_v4("/Users/yahyaahmedkhan/Desktop/dev/UniProjects/plants-ai-backend/apple-scab_02a.jpg").then(
+//   result => {
+//     console.log(result)
+//   }
+// )
 
 
 
