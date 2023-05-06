@@ -140,8 +140,6 @@ async function loadGraphModelV3() {
   const handler = tfn.io.fileSystem("tfjs_model_v3/model.json");
 
   modelv3 = await tf.loadGraphModel(handler);
-  // outputTensor = model.outputs[0];
-  // console.log(outputTensor.classNames); // ["class 0", "class 1", "class 2", ...]
   return modelv3;
 }
 
@@ -163,10 +161,6 @@ async function predict_image_v3(img_path) {
   const probs = prediction.dataSync();
   const classIndex = probs.indexOf(Math.max(...probs));
 
-  // console.log("Predicted class index:", classIndex);
-  // console.log("Class: ", idx_class_map[classIndex])
-  // console.log("Accuracy: ", probs[classIndex])
-
   return [v3_idxclass_map[classIndex], probs[classIndex]];
 }
 
@@ -182,8 +176,6 @@ async function loadGraphModel() {
   const handler = tfn.io.fileSystem("tfjs_model_dir/model.json");
 
   model = await tf.loadGraphModel(handler);
-  // outputTensor = model.outputs[0];
-  // console.log(outputTensor.classNames); // ["class 0", "class 1", "class 2", ...]
   return model;
 }
 
@@ -238,7 +230,7 @@ idx_map_leaf = {
 }
 
 async function predict_leaf_image(img) {
-  const img1 = fs.readFileSync("dca.jpg");
+  const img1 = fs.readFileSync(img);
   const tensor = tfn.node.decodeImage(img1);
 
   const resized = tf.image.resizeBilinear(tensor, [224, 224]);
@@ -255,19 +247,51 @@ async function predict_leaf_image(img) {
   const probs = prediction.dataSync();
   const classIndex = probs.indexOf(Math.max(...probs));
 
+  return [idx_map_leaf[classIndex], probs[classIndex]];
+}
+
+let ammar_model
+
+async function loadGraphModel_Ammar() {
+  const handler = tfn.io.fileSystem("tfjs_ammar_model_og/model.json");
+
+  ammar_model = await tf.loadGraphModel(handler);
+  return ammar_model;
+}
+
+async function predict_image_ammar(img_path) {
+  const img = fs.readFileSync(img_path);
+  const tensor = tfn.node.decodeImage(img);
+
+  const resized = tf.image.resizeBilinear(tensor, [224, 224]);
+  const casted = resized.cast("float32");
+  const expanded = casted.expandDims(0);
+  const normalized = expanded.div(255.0);
+
+  if (!ammar_model) {
+    // Check if the model has already been loaded
+    await loadGraphModel_Ammar(); // Load the model if it hasn't been loaded yet
+  }
+  const prediction = ammar_model.predict(normalized);
+
+  const probs = prediction.dataSync();
+  const classIndex = probs.indexOf(Math.max(...probs));
+
   // console.log("Predicted class index:", classIndex);
   // console.log("Class: ", idx_class_map[classIndex])
   // console.log("Accuracy: ", probs[classIndex])
 
-  return [idx_map_leaf[classIndex], probs[classIndex]];
+  return [idx_class_map[classIndex], probs[classIndex]];
 }
 
+
+
 // for testing model
-// predict_image_v4("/Users/yahyaahmedkhan/Desktop/dev/UniProjects/plants-ai-backend/apple-scab_02a.jpg").then(
-//   result => {
-//     console.log(result)
-//   }
-// )
+predict_image_ammar("/Users/yahyaahmedkhan/Desktop/dev/UniProjects/plants-ai-backend/potato-blight.jpg").then(
+  result => {
+    console.log(result)
+  }
+)
 
 
 
