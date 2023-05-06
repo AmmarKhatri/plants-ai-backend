@@ -9,6 +9,8 @@ const sharp = require('sharp');
 const { error } = require("console");
 const upload = multer({ dest: 'uploads/' });
 
+// MAP FOR OG MODEL, REVERSE MAP, IDX -> NAME, I USED THO
+
 const class_idx_map = {
   Apple___Apple_scab: 0,
   Apple___Black_rot: 1,
@@ -49,6 +51,8 @@ const class_idx_map = {
   Tomato___Tomato_mosaic_virus: 36,
   Tomato___healthy: 37,
 };
+
+// MAP FOR DATASET V4
 v4_idxclass_map = {
   0: 'Apple_scab',
   1: 'Bacterial_spot',
@@ -72,6 +76,8 @@ v4_idxclass_map = {
   19: 'Tomato_mosaic_virus',
   20: 'healthy'
 }
+
+// MAP FOR DATASET V3
 
 v3_idxclass_map = {
     0: 'Apple___healthy',
@@ -98,6 +104,9 @@ v3_idxclass_map = {
     21: 'Tomato___healthy',
     22: 'Tomato_diseased'
 }
+
+// ORIGINAL MODEL ON DATASET V4, USING TRANSFER LEARNING
+
 let modelv4
 
 async function loadGraphModelV4() {
@@ -134,6 +143,9 @@ async function predict_image_v4(img_path) {
   return [v4_idxclass_map[classIndex], probs[classIndex]];
 }
 
+// MODEL V3 DATASET OF FORM PALNTX HEALTHY / NONHEALTHY
+
+
 let modelv3
 
 async function loadGraphModelV3() {
@@ -169,6 +181,9 @@ for (let key in class_idx_map) {
   let value = class_idx_map[key];
   idx_class_map[value] = key;
 }
+
+// ORIGNAL MODEL, FIRST DEPLOYED ON SERVER
+
 
 let model;
 
@@ -212,6 +227,7 @@ loadGraphModel();
 //   }
 // )
 
+// LEAF RECOGNITION MODEL, SAYS IS LEAF OR NOT LEAF
 
 
 let leaf_model
@@ -250,6 +266,9 @@ async function predict_leaf_image(img) {
   return [idx_map_leaf[classIndex], probs[classIndex]];
 }
 
+// AMMARS MODEL, TRAINED BY YAHYA ON OG DATASET, TESTED AS WELL
+
+
 let ammar_model
 
 async function loadGraphModel_Ammar() {
@@ -284,14 +303,82 @@ async function predict_image_ammar(img_path) {
   return [idx_class_map[classIndex], probs[classIndex]];
 }
 
+// AMMARS MODEL, TRAINED BY HIM, NOT TESTED
+
+let ammar_model_v4
+
+async function loadGraphModel_Ammar_v4() {
+  const handler = tfn.io.fileSystem("tfjs_ammar_model_v4/model.json");
+
+  ammar_model_v4 = await tf.loadGraphModel(handler);
+  return ammar_model_v4;
+}
+
+async function predict_image_ammar_v4(img_path) {
+  const img = fs.readFileSync(img_path);
+  const tensor = tfn.node.decodeImage(img);
+
+  const resized = tf.image.resizeBilinear(tensor, [224, 224]);
+  const casted = resized.cast("float32");
+  const expanded = casted.expandDims(0);
+  const normalized = expanded.div(255.0);
+
+  if (!ammar_model_v4) {
+    // Check if the model has already been loaded
+    await loadGraphModel_Ammar_v4(); // Load the model if it hasn't been loaded yet
+  }
+  const prediction = ammar_model_v4.predict(normalized);
+
+  const probs = prediction.dataSync();
+  const classIndex = probs.indexOf(Math.max(...probs));
+
+  // console.log("Predicted class index:", classIndex);
+  // console.log("Class: ", idx_class_map[classIndex])
+  // console.log("Accuracy: ", probs[classIndex])
+
+  return [v4_idxclass_map[classIndex], probs[classIndex]];
+}
+
+// AMMARS MODEL, TRAINED BY YAHYA, TESTED WITH A TEST DATASET
+
+let ammar_model_v4_tested
+
+async function loadGraphModel_Ammar_v4_tested() {
+  const handler = tfn.io.fileSystem("tfjs_ammar_model_v4_tested/model.json");
+
+  ammar_model_v4_tested = await tf.loadGraphModel(handler);
+  return ammar_model_v4_tested;
+}
+
+async function predict_image_ammar_v4_tested(img_path) {
+  const img = fs.readFileSync(img_path);
+  const tensor = tfn.node.decodeImage(img);
+
+  const resized = tf.image.resizeBilinear(tensor, [224, 224]);
+  const casted = resized.cast("float32");
+  const expanded = casted.expandDims(0);
+  const normalized = expanded.div(255.0);
+
+  if (!ammar_model_v4_tested) {
+    // Check if the model has already been loaded
+    await loadGraphModel_Ammar_v4_tested(); // Load the model if it hasn't been loaded yet
+  }
+  const prediction = ammar_model_v4_tested.predict(normalized);
+
+  const probs = prediction.dataSync();
+  const classIndex = probs.indexOf(Math.max(...probs));
+
+  return [v4_idxclass_map[classIndex], probs[classIndex]];
+}
+
 
 
 // for testing model
-predict_image_ammar("/Users/yahyaahmedkhan/Desktop/dev/UniProjects/plants-ai-backend/potato-blight.jpg").then(
-  result => {
-    console.log(result)
-  }
-)
+// predict_image_ammar_v4_tested("/Users/yahyaahmedkhan/Desktop/dev/UniProjects/plants-ai-backend/Unknown-4.jpg").then(
+//   result => {
+//     console.log(result)
+//   }
+// )
 
 
 
