@@ -64,12 +64,44 @@ async function predict_image(img_path) {
   return [v4_idxclass_map[classIndex], probs[classIndex]];
 }
 
-// for testing model
-predict_image("/Users/yahyaahmedkhan/Desktop/dev/UniProjects/plants-ai-backend/8b_strawberry_leaf_scorch_strang_uk_09hort002js309.jpg").then(
-  result => {
-    console.log(result)
+let leaf_model
+async function loadLeafGraphModel() {
+  const handler = tfn.io.fileSystem("tfjs_leaf_model_dir/model.json");
+
+  leaf_model = await tf.loadGraphModel(handler);
+}
+
+idx_map_leaf = {
+  0 : "is_leaf",
+  1 : "is_not_leaf"
+}
+
+async function predict_leaf(img) {
+  const img1 = fs.readFileSync(img);
+  const tensor = tfn.node.decodeImage(img1);
+
+  const resized = tf.image.resizeBilinear(tensor, [224, 224]);
+  const casted = resized.cast("float32");
+  const expanded = casted.expandDims(0);
+  const normalized = expanded.div(255.0);
+
+  if (!leaf_model) {
+    // Check if the model has already been loaded
+    await loadLeafGraphModel(); // Load the model if it hasn't been loaded yet
   }
-)
+  const prediction = leaf_model.predict(normalized);
+
+  const probs = prediction.dataSync();
+  const classIndex = probs.indexOf(Math.max(...probs));
+
+  return [idx_map_leaf[classIndex], probs[classIndex]];
+}
+// // for testing model
+// predict_leaf("/Users/yahyaahmedkhan/Desktop/dev/UniProjects/plants-ai-backend/8b_strawberry_leaf_scorch_strang_uk_09hort002js309.jpg").then(
+//   result => {
+//     console.log(result)
+//   }
+// )
 
 router.get("/", (req, res, next) => {
   // testing if taking requests
