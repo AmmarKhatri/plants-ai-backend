@@ -109,33 +109,41 @@ router.get("/", (req, res, next) => {
     res: "server is receiving requests",
   });
 });
+
+
 router.post("/", upload.single('file'), async (req, res, next) => {
-  // put logic here
+  
+  // loading the file path
   const file = req.file;
   const filePath = file.path;
-  // Read the uploaded file from disk
-  const fileBuffer = fs.readFileSync(filePath);
 
-  // Convert the file to JPEG format using sharp
-  const converted = await sharp(fileBuffer).jpeg().toBuffer();
-  predict_image(converted).then(result =>{
-    res.status(201).json({
-      type: result[0],
-      accuracy: result[1]
-    });
-
+  // calling predict leaf function to confirm if it is a leaf
+  predict_leaf(filePath).then(isleaf => {
+    if (isleaf[0] === "is_leaf"){
+      predict_image(filePath).then(result =>{
+        res.status(201).json({
+          type: result[0],
+          accuracy: result[1]
+        });
+          // Delete the uploaded file
+          fs.unlinkSync(filePath);
+    
+      })
+    } else {
+      res.status(201).json({
+        type: isleaf[0],
+        accuracy: isleaf[1]
+      });
       // Delete the uploaded file
       fs.unlinkSync(filePath);
-
+    }
   }).catch(err=>{
     console.log(err);
     res.status(500).json({
       message: "Error processing file"
     });
-
-      // Delete the uploaded file
-      fs.unlinkSync(filePath);
-
+    // Delete the uploaded file
+    fs.unlinkSync(filePath);
   })
 });
 
